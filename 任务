@@ -7,3 +7,28 @@
 21-23  德坡
 24     姜楠 海俊
 25-26  姜楠
+
+各自创建个文件 用markdown方式编辑
+
+先翻译 翻译后再编写demo
+中英文 按段编写
+如：
+
+#The following prerequisite knowledge is required for this product:
+
+Basic computer technology and terminology
+Familiarity with command-line interfaces such as bash
+Relational database management systems
+Basic familiarity with the purpose and operation of Hadoop
+Before you can use Sqoop, a release of Hadoop must be installed and configured. Sqoop is currently supporting 4 major Hadoop releases - 0.20, 0.23, 1.0 and 2.0.
+
+This document assumes you are using a Linux or Linux-like environment. If you are using Windows, you may be able to use cygwin to accomplish most of the following tasks. If you are using Mac OS X, you should see few (if any) compatibility errors. Sqoop is predominantly operated and tested on Linux.
+
+
+#本产品所需的前提知识：
+基本计算机技术和术语
+命令行接口如bash的熟悉
+关系型数据库管理系统
+与目的和运行Hadoop的基本认识
+在您可以使用Sqoop，释放Hadoop必须安装和配置。Sqoop是目前支持4个主要的Hadoop版本- 0.20，0.23，1和2。
+本文档假定您正在使用一个或类似的环境。如果你使用的是Windows，你可以使用Cygwin来完成大部分的任务。如果你使用的是苹果操作系统，你应该看到一些（如果有的话）兼容性错误。Sqoop主要是运行和测试Linux。
