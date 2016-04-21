@@ -2,7 +2,7 @@ Documentation Home
 Sqoop User Guide (v1.4.5)
 Sqoop User Guide (v1.4.5)
 Table of Contents
-
+shit
 1. Introduction
 2. Supported Releases
 3. Sqoop Releases
