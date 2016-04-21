@@ -1,0 +1,2 @@
+# SQOOP-1.4.5-DOC-TRANSLATE
+SQOOP1.4.5 doc translate 
