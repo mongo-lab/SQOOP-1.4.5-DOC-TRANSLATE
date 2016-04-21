@@ -2550,82 +2550,82 @@ The following Oracle data types are supported by the Data Connector for Oracle a
 
 BINARY_DOUBLE
 
-      
+
 NCLOB
 
 BINARY_FLOAT
 
-      
+
 NUMBER
 
 BLOB
 
-      
+
 NVARCHAR2
 
 CHAR
 
-      
+
 RAW
 
 CLOB
 
-      
+
 ROWID
 
 DATE
 
-      
+
 TIMESTAMP
 
 FLOAT
 
-      
+
 TIMESTAMP WITH TIME ZONE
 
 INTERVAL DAY TO SECOND
 
-      
+
 TIMESTAMP WITH LOCAL TIME ZONE
 
 INTERVAL YEAR TO MONTH
 
-      
+
 URITYPE
 
 LONG
 
-      
+
 VARCHAR2
 
 NCHAR
 
-      
+
 All other Oracle column types are NOT supported. Example Oracle column types NOT supported by Data Connector for Oracle and Hadoop include:
 
 All of the ANY types
 
-      
+
 BFILE
 
 All of the MEDIA types
 
-      
+
 LONG RAW
 
 All of the SPATIAL types
 
-      
+
 MLSLABEL
 
 Any type referred to as UNDEFINED
 
-      
+
 UROWID
 
 All custom (user-defined) URI types
 
-      
+
 XMLTYPE
 
 [Note]	Note
