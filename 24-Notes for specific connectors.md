@@ -1,0 +1,1282 @@
+#24. Notes for specific connectors
+##24.1. MySQL JDBC Connector
+##24.1.1. Upsert functionality
+##24.2. MySQL Direct Connector
+##24.2.1. Requirements
+##24.2.2. Limitations
+##24.2.3. Direct-mode Transactions
+##24.3. Microsoft SQL Connector
+##24.3.1. Extra arguments
+##24.3.2. Schema support
+##24.3.3. Table hints
+##24.4. PostgreSQL Connector
+##24.4.1. Extra arguments
+24.4.2. Schema support
+24.5. PostgreSQL Direct Connector
+24.5.1. Requirements
+24.5.2. Limitations
+24.6. pg_bulkload connector
+24.6.1. Purpose
+24.6.2. Requirements
+24.6.3. Syntax
+24.6.4. Data Staging
+24.7. Netezza Connector
+24.7.1. Extra arguments
+24.7.2. Direct Mode
+24.7.3. Null string handling
+24.8. Data Connector for Oracle and Hadoop
+24.8.1. About
+24.8.1.1. Jobs
+24.8.1.2. How The Standard Oracle Manager Works for Imports
+24.8.1.3. How The Data Connector for Oracle and Hadoop Works for Imports
+24.8.1.4. Data Connector for Oracle and Hadoop Exports
+24.8.2. Requirements
+24.8.2.1. Ensure The Oracle Database JDBC Driver Is Setup Correctly
+24.8.2.2. Oracle Roles and Privileges
+24.8.2.3. Additional Oracle Roles And Privileges Required for Export
+24.8.2.4. Supported Data Types
+24.8.3. Execute Sqoop With Data Connector for Oracle and Hadoop
+24.8.3.1. Connect to Oracle / Oracle RAC
+24.8.3.2. Connect to An Oracle Database Instance
+24.8.3.3. Connect to An Oracle RAC
+24.8.3.4. Login to The Oracle Instance
+24.8.3.5. Kill Data Connector for Oracle and Hadoop Jobs
+24.8.4. Import Data from Oracle
+24.8.4.1. Match Hadoop Files to Oracle Table Partitions
+24.8.4.2. Specify The Partitions To Import
+24.8.4.3. Consistent Read: All Mappers Read From The Same Point In Time
+24.8.5. Export Data into Oracle
+24.8.5.1. Insert-Export
+24.8.5.2. Update-Export
+24.8.5.3. Merge-Export
+24.8.5.4. Create Oracle Tables
+24.8.5.5. NOLOGGING
+24.8.5.6. Partitioning
+24.8.5.7. Match Rows Via Multiple Columns
+24.8.5.8. Storage Clauses
+24.8.6. Manage Date And Timestamp Data Types
+24.8.6.1. Import Date And Timestamp Data Types from Oracle
+24.8.6.2. The Data Connector for Oracle and Hadoop Does Not Apply A Time Zone to DATE / TIMESTAMP Data Types
+24.8.6.3. The Data Connector for Oracle and Hadoop Retains Time Zone Information in TIMEZONE Data Types
+24.8.6.4. Data Connector for Oracle and Hadoop Explicitly States Time Zone for LOCAL TIMEZONE Data Types
+24.8.6.5. java.sql.Timestamp
+24.8.6.6. Export Date And Timestamp Data Types into Oracle
+24.8.7. Configure The Data Connector for Oracle and Hadoop
+24.8.7.1. oraoop-site-template.xml
+24.8.7.2. oraoop.oracle.session.initialization.statements
+24.8.7.3. oraoop.table.import.where.clause.location
+24.8.7.4. oracle.row.fetch.size
+24.8.7.5. oraoop.import.hint
+24.8.7.6. oraoop.oracle.append.values.hint.usage
+24.8.7.7. mapred.map.tasks.speculative.execution
+24.8.7.8. oraoop.block.allocation
+24.8.7.9. oraoop.import.omit.lobs.and.long
+24.8.7.10. oraoop.locations
+24.8.7.11. sqoop.connection.factories
+24.8.7.12. Expressions in oraoop-site.xml
+24.8.8. Troubleshooting The Data Connector for Oracle and Hadoop
+24.8.8.1. Quote Oracle Owners And Tables
+24.8.8.2. Quote Oracle Columns
+24.8.8.3. Confirm The Data Connector for Oracle and Hadoop Can Initialize The Oracle Session
+24.8.8.4. Check The Sqoop Debug Logs for Error Messages
+24.8.8.5. Export: Check Tables Are Compatible
+24.8.8.6. Export: Parallelization
+24.8.8.7. Export: Check oraoop.oracle.append.values.hint.usage
+24.8.8.8. Turn On Verbose
+24.1. MySQL JDBC Connector
+24.1.1. Upsert functionality
+This section contains information specific to MySQL JDBC Connector.
+
+24.1.1. Upsert functionality
+MySQL JDBC Connector is supporting upsert functionality using argument --update-mode allowinsert. To achieve that Sqoop is using MySQL clause INSERT INTO … ON DUPLICATE KEY UPDATE. This clause do not allow user to specify which columns should be used to distinct whether we should update existing row or add new row. Instead this clause relies on table’s unique keys (primary key belongs to this set). MySQL will try to insert new row and if the insertion fails with duplicate unique key error it will update appropriate row instead. As a result, Sqoop is ignoring values specified in parameter --update-key, however user needs to specify at least one valid column to turn on update mode itself.
+
+24.2. MySQL Direct Connector
+24.2.1. Requirements
+24.2.2. Limitations
+24.2.3. Direct-mode Transactions
+MySQL Direct Connector allows faster import and export to/from MySQL using mysqldump and mysqlimport tools functionality instead of SQL selects and inserts.
+
+To use the MySQL Direct Connector, specify the --direct argument for your import or export job.
+
+Example:
+
+$ sqoop import --connect jdbc:mysql://db.foo.com/corp --table EMPLOYEES \
+    --direct
+Passing additional parameters to mysqldump:
+
+$ sqoop import --connect jdbc:mysql://server.foo.com/db --table bar \
+    --direct -- --default-character-set=latin1
+24.2.1. Requirements
+Utilities mysqldump and mysqlimport should be present in the shell path of the user running the Sqoop command on all nodes. To validate SSH as this user to all nodes and execute these commands. If you get an error, so will Sqoop.
+
+24.2.2. Limitations
+Currently the direct connector does not support import of large object columns (BLOB and CLOB).
+Importing to HBase and Accumulo is not supported
+Use of a staging table when exporting data is not supported
+Import of views is not supported
+24.2.3. Direct-mode Transactions
+For performance, each writer will commit the current transaction approximately every 32 MB of exported data. You can control this by specifying the following argument before any tool-specific arguments: -D sqoop.mysql.export.checkpoint.bytes=size, where size is a value in bytes. Set size to 0 to disable intermediate checkpoints, but individual files being exported will continue to be committed independently of one another.
+
+Sometimes you need to export large data with Sqoop to a live MySQL cluster that is under a high load serving random queries from the users of your application. While data consistency issues during the export can be easily solved with a staging table, there is still a problem with the performance impact caused by the heavy export.
+
+First off, the resources of MySQL dedicated to the import process can affect the performance of the live product, both on the master and on the slaves. Second, even if the servers can handle the import with no significant performance impact (mysqlimport should be relatively "cheap"), importing big tables can cause serious replication lag in the cluster risking data inconsistency.
+
+With -D sqoop.mysql.export.sleep.ms=time, where time is a value in milliseconds, you can let the server relax between checkpoints and the replicas catch up by pausing the export process after transferring the number of bytes specified in sqoop.mysql.export.checkpoint.bytes. Experiment with different settings of these two parameters to archieve an export pace that doesn’t endanger the stability of your MySQL cluster.
+
+[Important]	Important
+Note that any arguments to Sqoop that are of the form -D parameter=value are Hadoop generic arguments and must appear before any tool-specific arguments (for example, --connect, --table, etc). Don’t forget that these parameters are only supported with the --direct flag set.
+
+24.3. Microsoft SQL Connector
+24.3.1. Extra arguments
+24.3.2. Schema support
+24.3.3. Table hints
+24.3.1. Extra arguments
+List of all extra arguments supported by Microsoft SQL Connector is shown below:
+
+Table 42. Supported Microsoft SQL Connector extra arguments:
+
+Argument	Description
+--schema <name>	Scheme name that sqoop should use. Default is "dbo".
+--table-hints <hints>	Table hints that Sqoop should use for data movement.
+
+24.3.2. Schema support
+If you need to work with tables that are located in non-default schemas, you can specify schema names via the --schema argument. Custom schemas are supported for both import and export jobs. For example:
+
+$ sqoop import ... --table custom_table -- --schema custom_schema
+24.3.3. Table hints
+Sqoop supports table hints in both import and export jobs. Table hints are used only for queries that move data from/to Microsoft SQL Server, but they cannot be used for meta data queries. You can specify a comma-separated list of table hints in the --table-hints argument. For example:
+
+$ sqoop import ... --table custom_table -- --table-hints NOLOCK
+24.4. PostgreSQL Connector
+24.4.1. Extra arguments
+24.4.2. Schema support
+24.4.1. Extra arguments
+List of all extra arguments supported by PostgreSQL Connector is shown below:
+
+Table 43. Supported PostgreSQL extra arguments:
+
+Argument	Description
+--schema <name>	Scheme name that sqoop should use. Default is "public".
+
+24.4.2. Schema support
+If you need to work with table that is located in schema other than default one, you need to specify extra argument --schema. Custom schemas are supported for both import and export job (optional staging table however must be present in the same schema as target table). Example invocation:
+
+$ sqoop import ... --table custom_table -- --schema custom_schema
+24.5. PostgreSQL Direct Connector
+24.5.1. Requirements
+24.5.2. Limitations
+PostgreSQL Direct Connector allows faster import and export to/from PostgresSQL "COPY" command.
+
+To use the PostgreSQL Direct Connector, specify the --direct argument for your import or export job.
+
+When importing from PostgreSQL in conjunction with direct mode, you can split the import into separate files after individual files reach a certain size. This size limit is controlled with the --direct-split-size argument.
+
+The direct connector offers also additional extra arguments:
+
+Table 44. Additional supported PostgreSQL extra arguments in direct mode:
+
+Argument	Description
+--boolean-true-string <str>	String that will be used to encode true value of boolean columns.
+Default is "TRUE".
+--boolean-false-string <str>	String that will be used to encode false value of boolean columns.
+Default is "FALSE".
+
+24.5.1. Requirements
+Utility psql should be present in the shell path of the user running the Sqoop command on all nodes. To validate SSH as this user to all nodes and execute these commands. If you get an error, so will Sqoop.
+
+24.5.2. Limitations
+Currently the direct connector does not support import of large object columns (BLOB and CLOB).
+Importing to HBase and Accumulo is not supported
+Import of views is not supported
+24.6. pg_bulkload connector
+24.6.1. Purpose
+24.6.2. Requirements
+24.6.3. Syntax
+24.6.4. Data Staging
+24.6.1. Purpose
+pg_bulkload connector is a direct connector for exporting data into PostgreSQL. This connector uses pg_bulkload. Users benefit from functionality of pg_bulkload such as fast exports bypassing shared bufferes and WAL, flexible error records handling, and ETL feature with filter functions.
+
+24.6.2. Requirements
+pg_bulkload connector requires following conditions for export job execution:
+
+The pg_bulkload must be installed on DB server and all slave nodes. RPM for RedHat or CentOS is available in then download page.
+The PostgreSQL JDBC is required on client node.
+Superuser role of PostgreSQL database is required for execution of pg_bulkload.
+24.6.3. Syntax
+Use --connection-manager option to specify connection manager classname.
+
+$ sqoop export (generic-args) --connection-manager org.apache.sqoop.manager.PGBulkloadManager (export-args)
+$ sqoop-export (generic-args) --connection-manager org.apache.sqoop.manager.PGBulkloadManager (export-args)
+This connector supports export arguments shown below.
+
+Table 45. Supported export control arguments:
+
+Argument	Description
+--export-dir <dir>	HDFS source path for the export
+-m,--num-mappers <n>	Use n map tasks to export in parallel
+--table <table-name>	Table to populate
+--input-null-string <null-string>	The string to be interpreted as null for string columns
+--clear-staging-table	Indicates that any data present in the staging table can be deleted.
+
+There are additional configuration for pg_bulkload execution specified via Hadoop Configuration properties which can be given with -D <property=value> option. Because Hadoop Configuration properties are generic arguments of the sqoop, it must preceed any export control arguments.
+
+Table 46. Supported export control properties:
+
+Property	Description
+mapred.reduce.tasks	Number of reduce tasks for staging. The defalt value is 1. Each tasks do staging in a single transaction.
+pgbulkload.bin	Path of the pg_bulkoad binary installed on each slave nodes.
+pgbulkload.check.constraints	Specify whether CHECK constraints are checked during the loading. The default value is YES.
+pgbulkload.parse.errors	The maximum mumber of ingored records that cause errors during parsing, encoding, filtering, constraints checking, and data type conversion. Error records are recorded in the PARSE BADFILE. The default value is INFINITE.
+pgbulkload.duplicate.errors	Number of ingored records that violate unique constraints. Duplicated records are recorded in the DUPLICATE BADFILE on DB server. The default value is INFINITE.
+pgbulkload.filter	Specify the filter function to convert each row in the input file. See the pg_bulkload documentation to know how to write FILTER functions.
+
+Here is a example of complete command line.
+
+$ sqoop export \
+    -Dmapred.reduce.tasks=2
+    -Dpgbulkload.bin="/usr/local/bin/pg_bulkload" \
+    -Dpgbulkload.input.field.delim=$'\t' \
+    -Dpgbulkload.check.constraints="YES" \
+    -Dpgbulkload.parse.errors="INFINITE" \
+    -Dpgbulkload.duplicate.errors="INFINITE" \
+    --connect jdbc:postgresql://pgsql.example.net:5432/sqooptest \
+    --connection-manager org.apache.sqoop.manager.PGBulkloadManager \
+    --table test --username sqooptest --export-dir=/test -m 2
+24.6.4. Data Staging
+Each map tasks of pg_bulkload connector’s export job create their own staging table on the fly. The Name of staging tables is decided based on the destination table and the task attempt ids. For example, the name of staging table for the "test" table is like test_attempt_1345021837431_0001_m_000000_0 .
+
+Staging tables are automatically dropped if tasks successfully complete or map tasks fail. When reduce task fails, staging table for the task are left for manual retry and users must take care of it.
+
+24.7. Netezza Connector
+24.7.1. Extra arguments
+24.7.2. Direct Mode
+24.7.3. Null string handling
+24.7.1. Extra arguments
+List of all extra arguments supported by Netezza Connector is shown below:
+
+Table 47. Supported Netezza extra arguments:
+
+Argument	Description
+--partitioned-access	Whether each mapper acts on a subset of data slices of a table or all Default is "false" for standard mode and "true" for direct mode.
+--max-errors	Applicable only in direct mode. This option specifies the error threshold per mapper while transferring data. If the number of errors encountered exceed this threshold then the job will fail.
+Default value is 1.
+--log-dir	Applicable only in direct mode. Specifies the directory where Netezza external table operation logs are stored. Default value is /tmp.
+
+24.7.2. Direct Mode
+Netezza connector supports an optimized data transfer facility using the Netezza external tables feature. Each map tasks of Netezza connector’s import job will work on a subset of the Netezza partitions and transparently create and use an external table to transport data. Similarly, export jobs will use the external table to push data fast onto the NZ system. Direct mode does not support staging tables, upsert options etc.
+
+Here is an example of complete command line for import using the Netezza external table feature.
+
+$ sqoop import \
+    --direct \
+    --connect jdbc:netezza://nzhost:5480/sqoop \
+    --table nztable \
+    --username nzuser \
+    --password nzpass \
+    --target-dir hdfsdir
+Here is an example of complete command line for export with tab as the field terminator character.
+
+$ sqoop export \
+    --direct \
+    --connect jdbc:netezza://nzhost:5480/sqoop \
+    --table nztable \
+    --username nzuser \
+    --password nzpass \
+    --export-dir hdfsdir \
+    --input-fields-terminated-by "\t"
+24.7.3. Null string handling
+Netezza direct connector supports the null-string features of Sqoop. The null string values are converted to appropriate external table options during export and import operations.
+
+Table 48. Supported export control arguments:
+
+Argument	Description
+--input-null-string <null-string>	The string to be interpreted as null for string columns.
+--input-null-non-string <null-string>	The string to be interpreted as null for non string columns.
+
+In the case of Netezza direct mode connector, both the arguments must be left to the default values or explicitly set to the same value. Furthermore the null string value is restricted to 0-4 utf8 characters.
+
+On export, for non-string columns, if the chosen null value is a valid representation in the column domain, then the column might not be loaded as null. For example, if the null string value is specified as "1", then on export, any occurrence of "1" in the input file will be loaded as value 1 instead of NULL for int columns.
+
+It is suggested that the null value be specified as empty string for performance and consistency.
+
+Table 49. Supported import control arguments:
+
+Argument	Description
+--null-string <null-string>	The string to be interpreted as null for string columns.
+--null-non-string <null-string>	The string to be interpreted as null for non string columns.
+
+In the case of Netezza direct mode connector, both the arguments must be left to the default values or explicitly set to the same value. Furthermore the null string value is restricted to 0-4 utf8 characters.
+
+On import, for non-string columns, the chosen null value in current implementations the null value representation is ignored for non character columns. For example, if the null string value is specified as "\N", then on import, any occurrence of NULL for non-char columns in the table will be imported as an empty string instead of \N, the chosen null string representation.
+
+It is suggested that the null value be specified as empty string for performance and consistency.
+
+24.8. Data Connector for Oracle and Hadoop
+24.8.1. About
+24.8.1.1. Jobs
+24.8.1.2. How The Standard Oracle Manager Works for Imports
+24.8.1.3. How The Data Connector for Oracle and Hadoop Works for Imports
+24.8.1.4. Data Connector for Oracle and Hadoop Exports
+24.8.2. Requirements
+24.8.2.1. Ensure The Oracle Database JDBC Driver Is Setup Correctly
+24.8.2.2. Oracle Roles and Privileges
+24.8.2.3. Additional Oracle Roles And Privileges Required for Export
+24.8.2.4. Supported Data Types
+24.8.3. Execute Sqoop With Data Connector for Oracle and Hadoop
+24.8.3.1. Connect to Oracle / Oracle RAC
+24.8.3.2. Connect to An Oracle Database Instance
+24.8.3.3. Connect to An Oracle RAC
+24.8.3.4. Login to The Oracle Instance
+24.8.3.5. Kill Data Connector for Oracle and Hadoop Jobs
+24.8.4. Import Data from Oracle
+24.8.4.1. Match Hadoop Files to Oracle Table Partitions
+24.8.4.2. Specify The Partitions To Import
+24.8.4.3. Consistent Read: All Mappers Read From The Same Point In Time
+24.8.5. Export Data into Oracle
+24.8.5.1. Insert-Export
+24.8.5.2. Update-Export
+24.8.5.3. Merge-Export
+24.8.5.4. Create Oracle Tables
+24.8.5.5. NOLOGGING
+24.8.5.6. Partitioning
+24.8.5.7. Match Rows Via Multiple Columns
+24.8.5.8. Storage Clauses
+24.8.6. Manage Date And Timestamp Data Types
+24.8.6.1. Import Date And Timestamp Data Types from Oracle
+24.8.6.2. The Data Connector for Oracle and Hadoop Does Not Apply A Time Zone to DATE / TIMESTAMP Data Types
+24.8.6.3. The Data Connector for Oracle and Hadoop Retains Time Zone Information in TIMEZONE Data Types
+24.8.6.4. Data Connector for Oracle and Hadoop Explicitly States Time Zone for LOCAL TIMEZONE Data Types
+24.8.6.5. java.sql.Timestamp
+24.8.6.6. Export Date And Timestamp Data Types into Oracle
+24.8.7. Configure The Data Connector for Oracle and Hadoop
+24.8.7.1. oraoop-site-template.xml
+24.8.7.2. oraoop.oracle.session.initialization.statements
+24.8.7.3. oraoop.table.import.where.clause.location
+24.8.7.4. oracle.row.fetch.size
+24.8.7.5. oraoop.import.hint
+24.8.7.6. oraoop.oracle.append.values.hint.usage
+24.8.7.7. mapred.map.tasks.speculative.execution
+24.8.7.8. oraoop.block.allocation
+24.8.7.9. oraoop.import.omit.lobs.and.long
+24.8.7.10. oraoop.locations
+24.8.7.11. sqoop.connection.factories
+24.8.7.12. Expressions in oraoop-site.xml
+24.8.8. Troubleshooting The Data Connector for Oracle and Hadoop
+24.8.8.1. Quote Oracle Owners And Tables
+24.8.8.2. Quote Oracle Columns
+24.8.8.3. Confirm The Data Connector for Oracle and Hadoop Can Initialize The Oracle Session
+24.8.8.4. Check The Sqoop Debug Logs for Error Messages
+24.8.8.5. Export: Check Tables Are Compatible
+24.8.8.6. Export: Parallelization
+24.8.8.7. Export: Check oraoop.oracle.append.values.hint.usage
+24.8.8.8. Turn On Verbose
+24.8.1. About
+24.8.1.1. Jobs
+24.8.1.2. How The Standard Oracle Manager Works for Imports
+24.8.1.3. How The Data Connector for Oracle and Hadoop Works for Imports
+24.8.1.4. Data Connector for Oracle and Hadoop Exports
+The Data Connector for Oracle and Hadoop is now included in Sqoop.
+
+It can be enabled by specifying the --direct argument for your import or export job.
+
+24.8.1.1. Jobs
+The Data Connector for Oracle and Hadoop inspects each Sqoop job and assumes responsibility for the ones it can perform better than the Oracle manager built into Sqoop.
+
+Data Connector for Oracle and Hadoop accepts responsibility for the following Sqoop Job types:
+
+Import jobs that are Non-Incremental.
+Export jobs
+Data Connector for Oracle and Hadoop does not accept responsibility for other Sqoop job types. For example Data Connector for Oracle and Hadoop does not accept eval jobs etc.
+Data Connector for Oracle and Hadoop accepts responsibility for those Sqoop Jobs with the following attributes:
+
+Oracle-related
+Table-Based - Jobs where the table argument is used and the specified object is a table.
+
+[Note]	Note
+Data Connector for Oracle and Hadoop does not process index-organized tables.
+
+There are at least 2 mappers — Jobs where the Sqoop command-line does not include: --num-mappers 1
+24.8.1.2. How The Standard Oracle Manager Works for Imports
+The Oracle manager built into Sqoop uses a range-based query for each mapper. Each mapper executes a query of the form:
+
+SELECT * FROM sometable WHERE id >= lo AND id < hi
+The lo and hi values are based on the number of mappers and the minimum and maximum values of the data in the column the table is being split by.
+
+If no suitable index exists on the table then these queries result in full table-scans within Oracle. Even with a suitable index, multiple mappers may fetch data stored within the same Oracle blocks, resulting in redundant IO calls.
+
+24.8.1.3. How The Data Connector for Oracle and Hadoop Works for Imports
+The Data Connector for Oracle and Hadoop generates queries for the mappers of the form:
+
+SELECT *
+  FROM sometable
+ WHERE rowid >= dbms_rowid.rowid_create(1, 893, 1, 279, 0) AND
+       rowid <= dbms_rowid.rowid_create(1, 893, 1, 286, 32767)
+The Data Connector for Oracle and Hadoop queries ensure that:
+
+No two mappers read data from the same Oracle block. This minimizes redundant IO.
+The table does not require indexes.
+The Sqoop command line does not need to specify a --split-by column.
+24.8.1.4. Data Connector for Oracle and Hadoop Exports
+Benefits of the Data Connector for Oracle and Hadoop:
+
+Merge-Export facility - Update Oracle tables by modifying changed rows AND inserting rows from the HDFS file that did not previously exist in the Oracle table. The Connector for Oracle and Hadoop’s Merge-Export is unique - there is no Sqoop equivalent.
+Lower impact on the Oracle database - Update the rows in the Oracle table that have changed, not all rows in the Oracle table. This has performance benefits and reduces the impact of the query on Oracle (for example, the Oracle redo logs).
+Improved performance - With partitioned tables, mappers utilize temporary Oracle tables which allow parallel inserts and direct path writes.
+24.8.2. Requirements
+24.8.2.1. Ensure The Oracle Database JDBC Driver Is Setup Correctly
+24.8.2.2. Oracle Roles and Privileges
+24.8.2.3. Additional Oracle Roles And Privileges Required for Export
+24.8.2.4. Supported Data Types
+24.8.2.1. Ensure The Oracle Database JDBC Driver Is Setup Correctly
+You may want to ensure the Oracle Database 11g Release 2 JDBC driver is setup correctly on your system. This driver is required for Sqoop to work with Oracle.
+
+The Oracle Database 11g Release 2 JDBC driver file is ojdbc6.jar (3.2Mb).
+
+If this file is not on your system then download it from: http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html
+
+This file should be put into the $SQOOP_HOME/lib directory.
+
+24.8.2.2. Oracle Roles and Privileges
+The Oracle user for The Data Connector for Oracle and Hadoop requires the following roles and privileges:
+
+create session
+In addition, the user must have the select any dictionary privilege or select_catalog_role role or all of the following object privileges:
+
+select on v_$instance
+select on dba_tables
+select on dba_tab_columns
+select on dba_objects
+select on dba_extents
+select on dba_segments — Required for Sqoop imports only
+select on v_$database — Required for Sqoop imports only
+select on v_$parameter — Required for Sqoop imports only
+[Note]	Note
+The user also requires the alter session privilege to make use of session tracing functionality. See "oraoop.oracle.session.initialization.statements" for more information.
+
+24.8.2.3. Additional Oracle Roles And Privileges Required for Export
+The Oracle user for Data Connector for Oracle and Hadoop requires:
+
+Quota on the tablespace in which the Oracle export tables are located.
+
+An example Oracle command to achieve this is
+
+alter user username quota unlimited on tablespace
+The following privileges:
+
+Type of Export	Privileges required
+All Export
+
+create table
+select on dba_tab_partitions
+select on dba_tab_subpartitions
+select on dba_indexes
+select on dba_ind_columns
+
+Insert-Export with a template
+table into another schema
+
+select any table
+create any table
+insert any table
+alter any table (partitioning)
+
+Insert-Export without a
+template table into another
+schema
+
+select,insert on table (no partitioning)
+select,alter on table (partitioning)
+
+Update-Export into another
+schema
+
+select,update on table (no partitioning)
+select,delete,alter,insert on table
+(partitioning)
+
+Merge-Export into another
+schema
+
+select,insert,update on table (no
+partitioning)
+select,insert,delete,alter on table
+(partitioning)
+
+24.8.2.4. Supported Data Types
+The following Oracle data types are supported by the Data Connector for Oracle and Hadoop:
+
+BINARY_DOUBLE
+
+
+NCLOB
+
+BINARY_FLOAT
+
+
+NUMBER
+
+BLOB
+
+
+NVARCHAR2
+
+CHAR
+
+
+RAW
+
+CLOB
+
+
+ROWID
+
+DATE
+
+
+TIMESTAMP
+
+FLOAT
+
+
+TIMESTAMP WITH TIME ZONE
+
+INTERVAL DAY TO SECOND
+
+
+TIMESTAMP WITH LOCAL TIME ZONE
+
+INTERVAL YEAR TO MONTH
+
+
+URITYPE
+
+LONG
+
+
+VARCHAR2
+
+NCHAR
+
+
+All other Oracle column types are NOT supported. Example Oracle column types NOT supported by Data Connector for Oracle and Hadoop include:
+
+All of the ANY types
+
+
+BFILE
+
+All of the MEDIA types
+
+
+LONG RAW
+
+All of the SPATIAL types
+
+
+MLSLABEL
+
+Any type referred to as UNDEFINED
+
+
+UROWID
+
+All custom (user-defined) URI types
+
+
+XMLTYPE
+
+[Note]	Note
+Data types RAW, LONG and LOB (BLOB, CLOB and NCLOB) are supported for Data Connector for Oracle and Hadoop imports. They are not supported for Data Connector for Oracle and Hadoop exports.
+
+24.8.3. Execute Sqoop With Data Connector for Oracle and Hadoop
+24.8.3.1. Connect to Oracle / Oracle RAC
+24.8.3.2. Connect to An Oracle Database Instance
+24.8.3.3. Connect to An Oracle RAC
+24.8.3.4. Login to The Oracle Instance
+24.8.3.5. Kill Data Connector for Oracle and Hadoop Jobs
+24.8.3.1. Connect to Oracle / Oracle RAC
+The Sqoop --connect parameter defines the Oracle instance or Oracle RAC to connect to. It is required with all Sqoop import and export commands.
+
+Data Connector for Oracle and Hadoop expects the associated connection string to be of a specific format dependent on whether the Oracle SID, Service or TNS name is defined. The TNS name based URL scheme can be used to enable authentication using Oracle wallets.
+
+--connect jdbc:oracle:thin:@OracleServer:OraclePort:OracleSID
+
+--connect jdbc:oracle:thin:@//OracleServer:OraclePort/OracleService
+
+--connect jdbc:oracle:thin:@TNSName
+
+24.8.3.2. Connect to An Oracle Database Instance
+Parameter / Component	Description
+jdbc:oracle:thin
+
+The Data Connector for Oracle and Hadoop requires the
+connection string starts with jdbc:oracle.
+
+The Data Connector for Oracle and Hadoop has been tested
+with the thin driver however it should work equally well
+with other drivers such as OCI.
+
+OracleServer
+
+The host name of the Oracle server.
+
+OraclePort
+
+The port to connect to the Oracle server.
+
+OracleSID
+
+The Oracle instance.
+
+OracleService
+
+The Oracle Service.
+
+TNSName
+
+The TNS name for the entry describing the connection to the Oracle server.
+
+[Note]	Note
+The Hadoop mappers connect to the Oracle database using a dynamically generated JDBC URL. This is designed to improve performance however it can be disabled by specifying:
+
+-D oraoop.jdbc.url.verbatim=true
+
+24.8.3.3. Connect to An Oracle RAC
+Use the --connect parameter as above. The connection string should point to one instance of the Oracle RAC. The listener of the host of this Oracle instance will locate the other instances of the Oracle RAC.
+
+[Note]	Note
+To improve performance, The Data Connector for Oracle and Hadoop identifies the active instances of the Oracle RAC and connects each Hadoop mapper to them in a roundrobin manner.
+
+If services are defined for this Oracle RAC then use the following parameter to specify the service name:
+
+-D oraoop.oracle.rac.service.name=ServiceName
+
+Parameter / Component	Description
+OracleServer:OraclePort:OracleInstance
+
+Name one instance of the Oracle RAC.
+
+The Data Connector for Oracle and
+Hadoop assumes the same port number for
+all instances of the Oracle RAC.
+
+The listener of the host of this Oracle
+instance is used to locate other instances of
+the Oracle RAC. For more information
+enter this command on the host command
+line:
+
+lsnrctl status
+
+-D oraoop.oracle.rac.service.name=ServiceName
+
+The service to connect to in the Oracle RAC.
+
+A connection is made to all instances of
+the Oracle RAC associated with the service
+given by ServiceName.
+
+If omitted, a connection is made to all
+instances of the Oracle RAC.
+
+The listener of the host of this Oracle
+instance needs to know the ServiceName
+and all instances of the Oracle RAC. For
+more information enter this command on
+the host command line:
+
+lsnrctl status
+
+24.8.3.4. Login to The Oracle Instance
+Login to the Oracle instance on the Sqoop command line:
+
+--connect jdbc:oracle:thin:@OracleServer:OraclePort:OracleInstance --username UserName -P
+
+Parameter / Component	Description
+--username UserName
+
+The username to login to the Oracle instance (SID).
+
+-P
+
+You will be prompted for the password to login to the Oracle
+instance.
+
+24.8.3.5. Kill Data Connector for Oracle and Hadoop Jobs
+Use the Hadoop Job Tracker to kill the Sqoop job, just as you would kill any other Map-Reduce job.
+
+$ hadoop job -kill jobid
+
+To allow an Oracle DBA to kill a Data Connector for Oracle and Hadoop job (via killing the sessions in Oracle) you need to prevent Map-Reduce from re-attempting failed jobs. This is done via the following Sqoop command-line switch:
+
+-D mapred.map.max.attempts=1
+
+This sends instructions similar to the following to the console:
+
+14/07/07 15:24:51 INFO oracle.OraOopManagerFactory:
+Note: This Data Connector for Oracle and Hadoop job can be killed via Oracle
+by executing the following statement:
+  begin
+    for row in (select sid,serial# from v$session where
+                module='Data Connector for Oracle and Hadoop' and
+                action='import 20140707152451EST') loop
+      execute immediate 'alter system kill session ''' || row.sid ||
+                        ',' || row.serial# || '''';
+    end loop;
+  end;
+24.8.4. Import Data from Oracle
+24.8.4.1. Match Hadoop Files to Oracle Table Partitions
+24.8.4.2. Specify The Partitions To Import
+24.8.4.3. Consistent Read: All Mappers Read From The Same Point In Time
+Execute Sqoop. Following is an example command:
+
+$ sqoop import --direct --connect … --table OracleTableName
+
+If The Data Connector for Oracle and Hadoop accepts the job then the following text is output:
+
+**************************************************
+*** Using Data Connector for Oracle and Hadoop ***
+**************************************************
+[Note]	Note
+More information is available on the --connect parameter. See "Connect to Oracle / Oracle RAC" for more information.
+If Java runs out of memory the workaround is to specify each mapper’s JVM memory allocation. Add the following parameter for example to allocate 4GB:
+
+-Dmapred.child.java.opts=-Xmx4000M
+
+An Oracle optimizer hint is included in the SELECT statement by default. See "oraoop.import.hint" for more information.
+
+You can alter the hint on the command line as follows:
+
+-Doraoop.import.hint="NO_INDEX(t)"
+
+You can turn off the hint on the command line as follows (notice the space between the double quotes):
+
+-Doraoop.import.hint=" "
+
+24.8.4.1. Match Hadoop Files to Oracle Table Partitions
+-Doraoop.chunk.method={ROWID|PARTITION}
+
+To import data from a partitioned table in such a way that the resulting HDFS folder structure in Hadoop will match the table’s partitions, set the chunk method to PARTITION. The alternative (default) chunk method is ROWID.
+
+[Note]	Note
+For the number of Hadoop files to match the number of Oracle partitions, set the number of mappers to be greater than or equal to the number of partitions.
+If the table is not partitioned then value PARTITION will lead to an error.
+24.8.4.2. Specify The Partitions To Import
+-Doraoop.import.partitions=PartitionA,PartitionB --table OracleTableName
+
+Imports PartitionA and PartitionB of OracleTableName.
+
+[Note]	Note
+You can enclose an individual partition name in double quotes to retain the letter case or if the name has special characters.
+
+-Doraoop.import.partitions='"PartitionA",PartitionB' --table OracleTableName
+
+If the partition name is not double quoted then its name will be automatically converted to upper case, PARTITIONB for above.
+
+When using double quotes the entire list of partition names must be enclosed in single quotes.
+
+If the last partition name in the list is double quoted then there must be a comma at the end of the list.
+
+-Doraoop.import.partitions='"PartitionA","PartitionB",' --table OracleTableName
+
+Name each partition to be included. There is no facility to provide a range of partition names.
+There is no facility to define sub partitions. The entire partition is included/excluded as per the filter.
+24.8.4.3. Consistent Read: All Mappers Read From The Same Point In Time
+-Doraoop.import.consistent.read={true|false}
+
+When set to false (by default) each mapper runs a select query. This will return potentially inconsistent data if there are a lot of DML operations on the table at the time of import.
+
+Set to true to ensure all mappers read from the same point in time. The System Change Number (SCN) is passed down to all mappers, which use the Oracle Flashback Query to query the table as at that SCN.
+
+[Note]	Note
+Values true | false are case sensitive.
+By default the SCN is taken from V$database. You can specify the SCN in the following command
+
+-Doraoop.import.consistent.read.scn=12345
+
+24.8.5. Export Data into Oracle
+24.8.5.1. Insert-Export
+24.8.5.2. Update-Export
+24.8.5.3. Merge-Export
+24.8.5.4. Create Oracle Tables
+24.8.5.5. NOLOGGING
+24.8.5.6. Partitioning
+24.8.5.7. Match Rows Via Multiple Columns
+24.8.5.8. Storage Clauses
+Execute Sqoop. Following is an example command:
+
+$ sqoop export --direct --connect … --table OracleTableName --export-dir /user/username/tablename
+
+The Data Connector for Oracle and Hadoop accepts all jobs that export data to Oracle. You can verify The Data Connector for Oracle and Hadoop is in use by checking the following text is output:
+
+**************************************************
+*** Using Data Connector for Oracle and Hadoop ***
+**************************************************
+[Note]	Note
+OracleTableName is the Oracle table the data will export into.
+OracleTableName can be in a schema other than that for the connecting user. Prefix the table name with the schema, for example SchemaName.OracleTableName.
+Hadoop tables are picked up from the /user/username/tablename directory.
+The export will fail if the Hadoop file contains any fields of a data type not supported by The Data Connector for Oracle and Hadoop. See "Supported Data Types" for more information.
+The export will fail if the column definitions in the Hadoop table do not exactly match the column definitions in the Oracle table.
+The Data Connector for Oracle and Hadoop indicates if it finds temporary tables that it created more than a day ago that still exist. Usually these tables can be dropped. The only circumstance when these tables should not be dropped is when an The Data Connector for Oracle and Hadoop job has been running for more than 24 hours and is still running.
+More information is available on the --connect parameter. See "Connect to Oracle / Oracle RAC" for more information.
+24.8.5.1. Insert-Export
+Appends data to OracleTableName. It does not modify existing data in OracleTableName.
+
+Insert-Export is the default method, executed in the absence of the --update-key parameter. All rows in the HDFS file in /user/UserName/TableName are inserted into OracleTableName. No change is made to pre-existing data in OracleTableName.
+
+$ sqoop export --direct --connect … --table OracleTableName --export-dir /user/username/tablename
+
+[Note]	Note
+If OracleTableName was previously created by The Data Connector for Oracle and Hadoop with partitions then this export will create a new partition for the data being inserted.
+When creating OracleTableName specify a template. See "Create Oracle Tables" for more information.
+24.8.5.2. Update-Export
+--update-key OBJECT
+
+Updates existing rows in OracleTableName.
+
+Rows in the HDFS file in /user/UserName/TableName are matched to rows in OracleTableName by the OBJECT column. Rows that match are copied from the HDFS file to the Oracle table. No action is taken on rows that do not match.
+
+$ sqoop export --direct --connect … --update-key OBJECT --table OracleTableName --export-dir /user/username/tablename
+
+[Note]	Note
+If OracleTableName was previously created by The Data Connector for Oracle and Hadoop with partitions then this export will create a new partition for the data being inserted. Updated rows will be moved to the new partition that was created for the export.
+For performance reasons it is strongly recommended that where more than a few rows are involved column OBJECT be an index column of OracleTableName.
+Ensure the column name defined with --update-key OBJECT is specified in the correct letter case. Sqoop will show an error if the letter case is incorrect.
+It is possible to match rows via multiple columns. See "Match Rows Via Multiple Columns" for more information.
+24.8.5.3. Merge-Export
+--update-key OBJECT -Doraoop.export.merge=true
+
+Updates existing rows in OracleTableName. Copies across rows from the HDFS file that do not exist within the Oracle table.
+
+Rows in the HDFS file in /user/UserName/TableName are matched to rows in OracleTableName by the OBJECT column. Rows that match are copied from the HDFS file to the Oracle table. Rows in the HDFS file that do not exist in OracleTableName are added to OracleTableName.
+
+$ sqoop export --direct --connect … --update-key OBJECT -Doraoop.export.merge=true --table OracleTableName --export-dir /user/username/tablename
+
+[Note]	Note
+Merge-Export is unique to The Data Connector for Oracle and Hadoop. It is not a standard Sqoop feature.
+If OracleTableName was previously created by The Data Connector for Oracle and Hadoop with partitions, then this export will create a new partition for the data being inserted. Updated rows will be moved to the new partition that was created for the export.
+For performance reasons it is strongly recommended that where more than a few rows are involved column OBJECT be an index column of OracleTableName.
+Ensure the column name defined with --update-key OBJECT is specified in the correct letter case. Sqoop will show an error if the letter case is incorrect.
+It is possible to match rows via multiple columns. See "Match Rows Via Multiple Columns" for more information.
+24.8.5.4. Create Oracle Tables
+-Doraoop.template.table=TemplateTableName
+
+Creates OracleTableName by replicating the structure and data types of TemplateTableName. TemplateTableName is a table that exists in Oracle prior to executing the Sqoop command.
+
+[Note]	Note
+The export will fail if the Hadoop file contains any fields of a data type not supported by The Data Connector for Oracle and Hadoop. See "Supported Data Types" for more information.
+The export will fail if the column definitions in the Hadoop table do not exactly match the column definitions in the Oracle table.
+This parameter is specific to creating an Oracle table. The export will fail if OracleTableName already exists in Oracle.
+Example command:
+
+$ sqoop export --direct --connect.. --table OracleTableName --export-dir /user/username/tablename -Doraoop.template.table=TemplateTableName
+
+24.8.5.5. NOLOGGING
+-Doraoop.nologging=true
+
+Assigns the NOLOGGING option to OracleTableName.
+
+NOLOGGING may enhance performance but you will be unable to backup the table.
+
+24.8.5.6. Partitioning
+-Doraoop.partitioned=true
+
+Partitions the table with the following benefits:
+
+The speed of the export is improved by allowing each mapper to insert data into a separate Oracle table using direct path writes. (An alter table exchange subpartition SQL statement is subsequently executed to swap the data into the export table.)
+You can selectively query or delete the data inserted by each Sqoop export job. For example, you can delete old data by dropping old partitions from the table.
+The partition value is the SYSDATE of when Sqoop export job was performed.
+
+The partitioned table created by The Data Connector for Oracle and Hadoop includes the following columns that don’t exist in the template table:
+
+oraoop_export_sysdate - This is the Oracle SYSDATE when the Sqoop export job was performed. The created table will be partitioned by this column.
+oraoop_mapper_id - This is the id of the Hadoop mapper that was used to process the rows from the HDFS file. Each partition is subpartitioned by this column. This column exists merely to facilitate the exchange subpartition mechanism that is performed by each mapper during the export process.
+oraoop_mapper_row - A unique row id within the mapper / partition.
+[Note]	Note
+If a unique row id is required for the table it can be formed by a combination of oraoop_export_sysdate, oraoop_mapper_id and oraoop_mapper_row.
+
+24.8.5.7. Match Rows Via Multiple Columns
+-Doraoop.update.key.extra.columns="ColumnA,ColumnB"
+
+Used with Update-Export and Merge-Export to match on more than one column. The first column to be matched on is --update-key OBJECT. To match on additional columns, specify those columns on this parameter.
+
+[Note]	Note
+Letter case for the column names on this parameter is not important.
+All columns used for matching should be indexed. The first three items on the index should be ColumnA, ColumnB and the column specified on --update-key - but the order in which the columns are specified is not important.
+24.8.5.8. Storage Clauses
+-Doraoop.temporary.table.storage.clause="StorageClause"
+
+-Doraoop.table.storage.clause="StorageClause"
+
+Use to customize storage with Oracle clauses as in TABLESPACE or COMPRESS
+
+-Doraoop.table.storage.clause applies to the export table that is created from -Doraoop.template.table. See "Create Oracle Tables" for more information. -Doraoop.temporary.table.storage.clause applies to all other working tables that are created during the export process and then dropped at the end of the export job.
+
+24.8.6. Manage Date And Timestamp Data Types
+24.8.6.1. Import Date And Timestamp Data Types from Oracle
+24.8.6.2. The Data Connector for Oracle and Hadoop Does Not Apply A Time Zone to DATE / TIMESTAMP Data Types
+24.8.6.3. The Data Connector for Oracle and Hadoop Retains Time Zone Information in TIMEZONE Data Types
+24.8.6.4. Data Connector for Oracle and Hadoop Explicitly States Time Zone for LOCAL TIMEZONE Data Types
+24.8.6.5. java.sql.Timestamp
+24.8.6.6. Export Date And Timestamp Data Types into Oracle
+24.8.6.1. Import Date And Timestamp Data Types from Oracle
+This section lists known differences in the data obtained by performing an Data Connector for Oracle and Hadoop import of an Oracle table versus a native Sqoop import of the same table.
+
+24.8.6.2. The Data Connector for Oracle and Hadoop Does Not Apply A Time Zone to DATE / TIMESTAMP Data Types
+Data stored in a DATE or TIMESTAMP column of an Oracle table is not associated with a time zone. Sqoop without the Data Connector for Oracle and Hadoop inappropriately applies time zone information to this data.
+
+Take for example the following timestamp in an Oracle DATE or TIMESTAMP column: 2am on 3rd October, 2010.
+
+Request Sqoop without the Data Connector for Oracle and Hadoop import this data using a system located in Melbourne Australia. The data is adjusted to Melbourne Daylight Saving Time. The data is imported into Hadoop as: 3am on 3rd October, 2010.
+
+The Data Connector for Oracle and Hadoop does not apply time zone information to these Oracle data-types. Even from a system located in Melbourne Australia, The Data Connector for Oracle and Hadoop ensures the Oracle and Hadoop timestamps match. The Data Connector for Oracle and Hadoop correctly imports this timestamp as: 2am on 3rd October, 2010.
+
+[Note]	Note
+In order for The Data Connector for Oracle and Hadoop to ensure data accuracy, Oracle DATE and TIMESTAMP values must be represented by a String, even when --as-sequencefile is used on the Sqoop command-line to produce a binary file in Hadoop.
+
+24.8.6.3. The Data Connector for Oracle and Hadoop Retains Time Zone Information in TIMEZONE Data Types
+Data stored in a TIMESTAMP WITH TIME ZONE column of an Oracle table is associated with a time zone. This data consists of two distinct parts: when the event occurred and where the event occurred.
+
+When Sqoop without The Data Connector for Oracle and Hadoop is used to import data it converts the timestamp to the time zone of the system running Sqoop and omits the component of the data that specifies where the event occurred.
+
+Take for example the following timestamps (with time zone) in an Oracle TIMESTAMP WITH TIME ZONE column:
+
+2:59:00 am on 4th April, 2010. Australia/Melbourne
+2:59:00 am on 4th April, 2010. America/New York
+Request Sqoop without The Data Connector for Oracle and Hadoop import this data using a system located in Melbourne Australia. From the data imported into Hadoop we know when the events occurred, assuming we know the Sqoop command was run from a system located in the Australia/Melbourne time zone, but we have lost the information regarding where the event occurred.
+
+2010-04-04 02:59:00.0
+2010-04-04 16:59:00.0
+Sqoop with The Data Connector for Oracle and Hadoop imports the example timestamps as follows. The Data Connector for Oracle and Hadoop retains the time zone portion of the data.
+
+2010-04-04 02:59:00.0 Australia/Melbourne
+2010-04-04 02:59:00.0 America/New_York
+24.8.6.4. Data Connector for Oracle and Hadoop Explicitly States Time Zone for LOCAL TIMEZONE Data Types
+Data stored in a TIMESTAMP WITH LOCAL TIME ZONE column of an Oracle table is associated with a time zone. Multiple end-users in differing time zones (locales) will each have that data expressed as a timestamp within their respective locale.
+
+When Sqoop without the Data Connector for Oracle and Hadoop is used to import data it converts the timestamp to the time zone of the system running Sqoop and omits the component of the data that specifies location.
+
+Take for example the following two timestamps (with time zone) in an Oracle TIMESTAMP WITH LOCAL TIME ZONE column:
+
+2:59:00 am on 4th April, 2010. Australia/Melbourne
+2:59:00 am on 4th April, 2010. America/New York
+Request Sqoop without the Data Connector for Oracle and Hadoop import this data using a system located in Melbourne Australia. The timestamps are imported correctly but the local time zone has to be guessed. If multiple systems in different locale were executing the Sqoop import it would be very difficult to diagnose the cause of the data corruption.
+
+2010-04-04 02:59:00.0
+2010-04-04 16:59:00.0
+Sqoop with the Data Connector for Oracle and Hadoop explicitly states the time zone portion of the data imported into Hadoop. The local time zone is GMT by default. You can set the local time zone with parameter:
+
+-Doracle.sessionTimeZone=Australia/Melbourne
+
+The Data Connector for Oracle and Hadoop would import these two timestamps as:
+
+2010-04-04 02:59:00.0 Australia/Melbourne
+2010-04-04 16:59:00.0 Australia/Melbourne
+24.8.6.5. java.sql.Timestamp
+To use Sqoop’s handling of date and timestamp data types when importing data from Oracle use the following parameter:
+
+-Doraoop.timestamp.string=false
+
+[Note]	Note
+Sqoop’s handling of date and timestamp data types does not store the timezone. However, some developers may prefer Sqoop’s handling as the Data Connector for Oracle and Hadoop converts date and timestamp data types to string. This may not work for some developers as the string will require parsing later in the workflow.
+
+24.8.6.6. Export Date And Timestamp Data Types into Oracle
+Ensure the data in the HDFS file fits the required format exactly before using Sqoop to export the data into Oracle.
+
+[Note]	Note
+The Sqoop export command will fail if the data is not in the required format.
+ff = Fractional second
+TZR = Time Zone Region
+Oracle Data Type	Required Format of The Data in the HDFS File
+DATE
+
+yyyy-mm-dd hh24:mi:ss
+
+TIMESTAMP
+
+yyyy-mm-dd hh24:mi:ss.ff
+
+TIMESTAMPTZ
+
+yyyy-mm-dd hh24:mi:ss.ff TZR
+
+TIMESTAMPLTZ
+
+yyyy-mm-dd hh24:mi:ss.ff TZR
+
+24.8.7. Configure The Data Connector for Oracle and Hadoop
+24.8.7.1. oraoop-site-template.xml
+24.8.7.2. oraoop.oracle.session.initialization.statements
+24.8.7.3. oraoop.table.import.where.clause.location
+24.8.7.4. oracle.row.fetch.size
+24.8.7.5. oraoop.import.hint
+24.8.7.6. oraoop.oracle.append.values.hint.usage
+24.8.7.7. mapred.map.tasks.speculative.execution
+24.8.7.8. oraoop.block.allocation
+24.8.7.9. oraoop.import.omit.lobs.and.long
+24.8.7.10. oraoop.locations
+24.8.7.11. sqoop.connection.factories
+24.8.7.12. Expressions in oraoop-site.xml
+24.8.7.1. oraoop-site-template.xml
+The oraoop-site-template.xml file is supplied with the Data Connector for Oracle and Hadoop. It contains a number of ALTER SESSION statements that are used to initialize the Oracle sessions created by the Data Connector for Oracle and Hadoop.
+
+If you need to customize these initializations to your environment then:
+
+Find oraoop-site-template.xml in the Sqoop configuration directory.
+Copy oraoop-site-template.xml to oraoop-site.xml.
+Edit the ALTER SESSION statements in oraoop-site.xml.
+24.8.7.2. oraoop.oracle.session.initialization.statements
+The value of this property is a semicolon-delimited list of Oracle SQL statements. These statements are executed, in order, for each Oracle session created by the Data Connector for Oracle and Hadoop.
+
+The default statements include:
+
+alter session set time_zone = '{oracle.sessionTimeZone|GMT}';
+This statement initializes the timezone of the JDBC client. This ensures that data from columns of type TIMESTAMP WITH LOCAL TIMEZONE are correctly adjusted into the timezone of the client and not kept in the timezone of the Oracle database.
+
+[Note]	Note
+There is an explanation to the text within the curly-braces. See "Expressions in oraoop-site.xml" for more information..
+A list of the time zones supported by your Oracle database is available by executing the following query: SELECT TZNAME FROM V$TIMEZONE_NAMES;
+alter session disable parallel query;
+This statement instructs Oracle to not parallelize SQL statements executed by the Data Connector for Oracle and Hadoop sessions. This Oracle feature is disabled because the Map/Reduce job launched by Sqoop is the mechanism used for parallelization.
+
+It is recommended that you not enable parallel query because it can have an adverse effect the load on the Oracle instance and on the balance between the Data Connector for Oracle and Hadoop mappers.
+
+Some export operations are performed in parallel where deemed appropriate by the Data Connector for Oracle and Hadoop. See "Parallelization" for more information.
+
+alter session set "_serial_direct_read"=true;
+This statement instructs Oracle to bypass the buffer cache. This is used to prevent Oracle from filling its buffers with the data being read by the Data Connector for Oracle and Hadoop, therefore diminishing its capacity to cache higher prioritized data. Hence, this statement is intended to minimize the Data Connector for Oracle and Hadoop’s impact on the immediate future performance of the Oracle database.
+--alter session set events '10046 trace name context forever, level 8';
+This statement has been commented-out. To allow tracing, remove the comment token "--" from the start of the line.
+[Note]	Note
+These statements are placed on separate lines for readability. They do not need to be placed on separate lines.
+A statement can be commented-out via the standard Oracle double-hyphen token: "--". The comment takes effect until the next semicolon.
+24.8.7.3. oraoop.table.import.where.clause.location
+SUBSPLIT (default)
+When set to this value, the where clause is applied to each subquery used to retrieve data from the Oracle table.
+
+A Sqoop command like:
+
+sqoop import -D oraoop.table.import.where.clause.location=SUBSPLIT --table JUNK --where "owner like 'G%'"
+
+Generates SQL query of the form:
+
+SELECT OWNER,OBJECT_NAME
+  FROM JUNK
+ WHERE ((rowid >=
+           dbms_rowid.rowid_create(1, 113320, 1024, 4223664, 0)
+         AND rowid <=
+             dbms_rowid.rowid_create(1, 113320, 1024, 4223671, 32767)))
+   AND (owner like 'G%')
+UNION ALL
+SELECT OWNER,OBJECT_NAME
+  FROM JUNK
+ WHERE ((rowid >=
+           dbms_rowid.rowid_create(1, 113320, 1024, 4223672, 0)
+         AND rowid <=
+           dbms_rowid.rowid_create(1, 113320, 1024, 4223679, 32767)))
+   AND (owner like 'G%')
+SPLIT
+When set to this value, the where clause is applied to the entire SQL statement used by each split/mapper.
+
+A Sqoop command like:
+
+sqoop import -D oraoop.table.import.where.clause.location=SPLIT --table JUNK --where "rownum ⇐ 10"
+
+Generates SQL query of the form:
+
+SELECT OWNER,OBJECT_NAME
+  FROM (
+        SELECT OWNER,OBJECT_NAME
+          FROM JUNK
+         WHERE ((rowid >=
+                   dbms_rowid.rowid_create(1, 113320, 1024, 4223664, 0)
+                 AND rowid <=
+                   dbms_rowid.rowid_create(1, 113320, 1024, 4223671, 32767)))
+        UNION ALL
+        SELECT OWNER,OBJECT_NAME
+          FROM JUNK
+         WHERE ((rowid >=
+                   dbms_rowid.rowid_create(1, 113320, 1024, 4223672, 0)
+                 AND rowid <=
+                   dbms_rowid.rowid_create(1, 113320, 1024, 4223679,32767)))
+       )
+ WHERE rownum <= 10
+[Note]	Note
+In this example, there are up to 10 rows imported per mapper.
+The SPLIT clause may result in greater overhead than the SUBSPLIT clause because the UNION statements need to be fully materialized before the data can be streamed to the mappers. However, you may wish to use SPLIT in the case where you want to limit the total number of rows processed by each mapper.
+24.8.7.4. oracle.row.fetch.size
+The value of this property is an integer specifying the number of rows the Oracle JDBC driver should fetch in each network round-trip to the database. The default value is 5000.
+
+If you alter this setting, confirmation of the change is displayed in the logs of the mappers during the Map-Reduce job.
+
+24.8.7.5. oraoop.import.hint
+The Oracle optimizer hint is added to the SELECT statement for IMPORT jobs as follows:
+
+SELECT /*+ NO_INDEX(t) */ * FROM employees;
+The default hint is NO_INDEX(t)
+
+[Note]	Note
+The hint can be added to the command line. See "Import Data from Oracle" for more information.
+See the Oracle Database Performance Tuning Guide (Using Optimizer Hints) for more information on Oracle optimizer hints.
+To turn the hint off, insert a space between the <value> elements.
+
+<property>
+  <name>oraoop.import.hint</name>
+  <value> </value>
+</property>
+24.8.7.6. oraoop.oracle.append.values.hint.usage
+The value of this property is one of: AUTO / ON / OFF.
+
+AUTO
+AUTO is the default value.
+
+Currently AUTO is equivalent to OFF.
+
+ON
+During export the Data Connector for Oracle and Hadoop uses direct path writes to populate the target Oracle table, bypassing the buffer cache. Oracle only allows a single session to perform direct writes against a specific table at any time, so this has the effect of serializing the writes to the table. This may reduce throughput, especially if the number of mappers is high. However, for databases where DBWR is very busy, or where the IO bandwidth to the underlying table is narrow (table resides on a single disk spindle for instance), then setting oraoop.oracle.append.values.hint.usage to ON may reduce the load on the Oracle database and possibly increase throughput.
+OFF
+During export the Data Connector for Oracle and Hadoop does not use the APPEND_VALUES Oracle hint.
+[Note]	Note
+This parameter is only effective on Oracle 11g Release 2 and above.
+
+24.8.7.7. mapred.map.tasks.speculative.execution
+By default speculative execution is disabled for the Data Connector for Oracle and Hadoop. This avoids placing redundant load on the Oracle database.
+
+If Speculative execution is enabled, then Hadoop may initiate multiple mappers to read the same blocks of data, increasing the overall load on the database.
+
+24.8.7.8. oraoop.block.allocation
+This setting determines how Oracle’s data-blocks are assigned to Map-Reduce mappers.
+
+[Note]	Note
+Applicable to import. Not applicable to export.
+
+ROUNDROBIN (default)
+Each chunk of Oracle blocks is allocated to the mappers in a roundrobin manner. This helps prevent one of the mappers from being allocated a large proportion of typically small-sized blocks from the start of Oracle data-files. In doing so it also helps prevent one of the other mappers from being allocated a large proportion of typically larger-sized blocks from the end of the Oracle data-files.
+
+Use this method to help ensure all the mappers are allocated a similar amount of work.
+
+RANDOM
+The list of Oracle blocks is randomized before being allocated to the mappers via a round-robin approach. This has the benefit of increasing the chance that, at any given instant in time, each mapper is reading from a different Oracle data-file. If the Oracle data-files are located on separate spindles, this should increase the overall IO throughput.
+SEQUENTIAL
+Each chunk of Oracle blocks is allocated to the mappers sequentially. This produces the tendency for each mapper to sequentially read a large, contiguous proportion of an Oracle data-file. It is unlikely for the performance of this method to exceed that of the round-robin method and it is more likely to allocate a large difference in the work between the mappers.
+
+Use of this method is generally not recommended.
+
+24.8.7.9. oraoop.import.omit.lobs.and.long
+This setting can be used to omit all LOB columns (BLOB, CLOB and NCLOB) and LONG column from an Oracle table being imported. This is advantageous in troubleshooting, as it provides a convenient way to exclude all LOB-based data from the import.
+
+24.8.7.10. oraoop.locations
+[Note]	Note
+Applicable to import. Not applicable to export.
+
+By default, four mappers are used for a Sqoop import job. The number of mappers can be altered via the Sqoop --num-mappers parameter.
+
+If the data-nodes in your Hadoop cluster have 4 task-slots (that is they are 4-CPU core machines) it is likely for all four mappers to execute on the same machine. Therefore, IO may be concentrated between the Oracle database and a single machine.
+
+This setting allows you to control which DataNodes in your Hadoop cluster each mapper executes on. By assigning each mapper to a separate machine you may improve the overall IO performance for the job. This will also have the side-effect of the imported data being more diluted across the machines in the cluster. (HDFS replication will dilute the data across the cluster anyway.)
+
+Specify the machine names as a comma separated list. The locations are allocated to each of the mappers in a round-robin manner.
+
+If using EC2, specify the internal name of the machines. Here is an example of using this parameter from the Sqoop command-line:
+
+$ sqoop import -D oraoop.locations=ip-10-250-23-225.ec2.internal,ip-10-250-107-32.ec2.internal,ip-10-250-207-2.ec2.internal,ip-10-250-27-114.ec2.internal --direct --connect…
+
+24.8.7.11. sqoop.connection.factories
+This setting determines behavior if the Data Connector for Oracle and Hadoop cannot accept the job. By default Sqoop accepts the jobs that the Data Connector for Oracle and Hadoop rejects.
+
+Set the value to org.apache.sqoop.manager.oracle.OraOopManagerFactory when you want the job to fail if the Data Connector for Oracle and Hadoop cannot accept the job.
+
+24.8.7.12. Expressions in oraoop-site.xml
+Text contained within curly-braces { and } are expressions to be evaluated prior to the SQL statement being executed. The expression contains the name of the configuration property optionally followed by a default value to use if the property has not been set. A pipe | character is used to delimit the property name and the default value.
+
+For example:
+
+When this Sqoop command is executed
+$ sqoop import -D oracle.sessionTimeZone=US/Hawaii --direct --connect
+The statement within oraoop-site.xml
+alter session set time_zone ='{oracle.sessionTimeZone|GMT}';
+Becomes
+alter session set time_zone = 'US/Hawaii'
+If the oracle.sessionTimeZone property had not been set, then this statement would use the specified default value and would become
+alter session set time_zone = 'GMT'
+[Note]	Note
+The oracle.sessionTimeZone property can be specified within the sqoop-site.xml file if you want this setting to be used all the time.
+
+24.8.8. Troubleshooting The Data Connector for Oracle and Hadoop
+24.8.8.1. Quote Oracle Owners And Tables
+24.8.8.2. Quote Oracle Columns
+24.8.8.3. Confirm The Data Connector for Oracle and Hadoop Can Initialize The Oracle Session
+24.8.8.4. Check The Sqoop Debug Logs for Error Messages
+24.8.8.5. Export: Check Tables Are Compatible
+24.8.8.6. Export: Parallelization
+24.8.8.7. Export: Check oraoop.oracle.append.values.hint.usage
+24.8.8.8. Turn On Verbose
+24.8.8.1. Quote Oracle Owners And Tables
+If the owner of the Oracle table needs to be
+quoted, use:
+
+$ sqoop import … --table
+"\"\"Scott\".customers\""
+
+This is the equivalent of:
+"Scott".customers
+
+If the Oracle table needs to be quoted, use:
+
+$ sqoop import … --table
+"\"scott.\"Customers\"\""
+
+This is the equivalent of:
+scott."Customers"
+
+If both the owner of the Oracle table and the
+table itself needs to be quoted, use:
+
+$ sqoop import … --table
+"\"\"Scott\".\"Customers\"\""
+
+This is the equivalent of:
+"Scott"."Customers"
+
+[Note]	Note
+The HDFS output directory is called something like: /user/username/"Scott"."Customers"
+If a table name contains a $ character, it may need to be escaped within your Unix shell. For example, the dr$object table in the ctxsys schema would be referred to as: $ sqoop import … --table "ctxsys.dr\$object"
+24.8.8.2. Quote Oracle Columns
+If a column name of an Oracle table needs to be quoted, use
+$ sqoop import … --table customers --columns "\"\"first name\"\""
+
+This is the equivalent of: select "first name" from customers
+
+24.8.8.3. Confirm The Data Connector for Oracle and Hadoop Can Initialize The Oracle Session
+If the Sqoop output includes feedback such as the following then the configuration properties contained within oraoop-site-template.xml and oraoop-site.xml have been loaded by Hadoop and can be accessed by the Data Connector for Oracle and Hadoop.
+
+14/07/08 15:21:13 INFO oracle.OracleConnectionFactory: Initializing Oracle session with SQL
+
+24.8.8.4. Check The Sqoop Debug Logs for Error Messages
+For more information about any errors encountered during the Sqoop import, refer to the log files generated by each of the (by default 4) mappers that performed the import.
+
+The logs can be obtained via your Map-Reduce Job Tracker’s web page.
+
+Include these log files with any requests you make for assistance on the Sqoop User Group web site.
+
+24.8.8.5. Export: Check Tables Are Compatible
+Check tables particularly in the case of a parsing error.
+
+Ensure the fields contained with the HDFS file and the columns within the Oracle table are identical. If they are not identical, the Java code dynamically generated by Sqoop to parse the HDFS file will throw an error when reading the file – causing the export to fail. When creating a table in Oracle ensure the definitions for the table template are identical to the definitions for the HDFS file.
+Ensure the data types in the table are supported. See "Supported Data Types" for more information.
+Are date and time zone based data types used? See "Export Date And Timestamp Data Types into Oracle" for more information.
+24.8.8.6. Export: Parallelization
+-D oraoop.export.oracle.parallelization.enabled=false
+
+If you see a parallelization error you may decide to disable parallelization on Oracle queries.
+
+24.8.8.7. Export: Check oraoop.oracle.append.values.hint.usage
+The oraoop.oracle.append.values.hint.usage parameter should not be set to ON if the Oracle table contains either a BINARY_DOUBLE or BINARY_FLOAT column and the HDFS file being exported contains a NULL value in either of these column types. Doing so will result in the error: ORA-12838: cannot read/modify an object after modifying it in parallel.
+
+24.8.8.8. Turn On Verbose
+Turn on verbose on the Sqoop command line.
+
+--verbose
+
+Check Sqoop stdout (standard output) and the mapper logs for information as to where the problem may be.
